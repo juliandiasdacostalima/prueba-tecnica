@@ -1,0 +1,90 @@
+{
+  "dataflows": [
+    {
+      "name": "prueba-acceso",
+      "inputs": [
+        {
+          "name": "opendata_demo",
+          "type": "file",
+          "config": {
+            "path": "/data/input/opendata_demo/poblacion{{ year }}.csv",
+            "format": "csv"
+          },
+          "spark_options": {
+            "header": "true",
+            "delimiter": ";"
+          }
+        }
+      ],
+      "transformations": [
+        {
+          "name": "add_date",
+          "type": "add_fields",
+          "input": "opendata_demo",
+          "config": {
+            "fields": [
+              {
+                "name": "domain",
+                "expression": "'demography'"
+              },
+              {
+                "name": "load_date",
+                "expression": "current_date()"
+              }
+            ]
+          }
+        },
+        {
+          "name": "filter_rows",
+          "type": "filter",
+          "input": "add_date",
+          "config": {
+            "filter": "sexo != 'Ambos sexos'"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "write_last_file",
+          "type": "file",
+          "input": "add_date",
+          "config": {
+            "path": "/data/output/opendata_demo/last",
+            "format": "json",
+            "save_mode": "overwrite"
+          }
+        },
+        {
+          "name": "write_historic_file",
+          "type": "file",
+          "input": "add_date",
+          "config": {
+            "path": "/data/output/opendata_demo/historic",
+            "format": "json",
+            "save_mode": "append",
+            "partition": "load_date"
+          }
+        },
+        {
+          "name": "write_delta_merge",
+          "type": "delta",
+          "input": "filter_rows",
+          "config": {
+            "table": "opendata_demo",
+            "save_mode": "merge",
+            "primary_key": ["provincia", "municipio", "sexo"]
+          }
+        },
+        {
+          "name": "write_delta_raw",
+          "type": "delta",
+          "input": "filter_rows",
+          "config": {
+            "table": "raw_opendata_demo",
+            "save_mode": "append"
+          }
+        }
+      ]
+    }
+  ]
+}
